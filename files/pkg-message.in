@@ -1,0 +1,23 @@
+[
+{ type: install
+  message: <<EOM
+doveguard installed.
+
+1) Enable the service:
+   sysrc doveguard_enable=YES
+
+2) Create a config:
+   cp /usr/local/etc/doveguard.conf.sample /usr/local/etc/doveguard.conf
+
+3) If using PF, ensure the table exists in /etc/pf.conf:
+   table <doveguard> persist counters
+   block in quick from <doveguard>
+
+4) If running as unprivileged user, set firewall_runner="doas" and allow pfctl:
+   permit nopass doveguard as root cmd /sbin/pfctl args -t doveguard -T add
+   permit nopass doveguard as root cmd /sbin/pfctl args -t doveguard -T delete
+
+Logs: /var/log/doveguard/doveguard.log (or enable syslog with log_syslog=true).
+EOM
+}
+]

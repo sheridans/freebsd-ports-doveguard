@@ -1,0 +1,122 @@
+.Dd January 10, 2026
+.Dt DOVEGUARD 8
+.Os
+.Sh NAME
+.Nm doveguard
+.Nd Dovecot brute-force blocker for FreeBSD
+.Sh SYNOPSIS
+.Nm
+.Op Fl c Ar path
+.Sh DESCRIPTION
+.Nm
+monitors Dovecot mail server logs for repeated authentication failures and
+blocks abusive IP addresses using PF or IPFW.
+It is designed to run as a background service on FreeBSD.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl c , Fl Fl config Ar path
+Path to configuration file.
+If not specified, the default is
+.Pa /usr/local/etc/doveguard.conf .
+.It Fl h , Fl Fl help
+Show help text and exit.
+.It Fl V , Fl Fl version
+Show version and exit.
+.El
+.Sh CONFIGURATION
+All configuration is read from the file specified with
+.Fl c .
+The following keys are supported:
+.Bl -tag -width indent
+.It Ic log_path
+Path to the mail log to monitor. Default:
+.Pa /var/log/maillog .
+.It Ic log_output_path
+Output log file path. Default:
+.Pa /var/log/doveguard/doveguard.log .
+.It Ic log_syslog
+Enable syslog output (boolean). Default: false.
+.It Ic firewall_backend
+Firewall backend:
+.Ic pf
+or
+.Ic ipfw .
+Default:
+.Ic pf .
+.It Ic firewall_table
+PF table name or IPFW table number. Default:
+.Ic doveguard .
+.It Ic firewall_runner
+Privilege escalation command for firewall calls:
+.Ic doas
+or
+.Ic sudo .
+Default: empty (no escalation).
+.It Ic window_seconds
+Sliding window size for failures in seconds. Default: 600.
+.It Ic threshold
+Failures before banning. Default: 3.
+.It Ic ban_duration_seconds
+Ban duration in seconds. Default: 86400.
+.It Ic fail_patterns
+List of regex patterns (each must include an
+.Ic ip
+capture group) with descriptions.
+.It Ic whitelist
+List of CIDR ranges to never ban.
+.It Ic dry_run
+Log firewall actions without executing them (boolean). Default: false.
+.It Ic save_interval_seconds
+How often to persist state in seconds. Default: 300.
+.It Ic max_log_line_bytes
+Maximum log line length in bytes. Default: 65536.
+.It Ic max_tracked_ips
+Maximum number of IPs to track. Default: 100000.
+.It Ic failure_cleanup_interval
+Cleanup interval for old failure entries in seconds. Default: 300.
+.El
+.Sh FIREWALL SETUP
+PF example (use a table name that matches
+.Ic firewall_table ) :
+.Bd -literal -offset indent
+table <doveguard> persist counters
+block in quick from <doveguard>
+.Ed
+.Pp
+IPFW example (use a table number that matches
+.Ic firewall_table ) :
+.Bd -literal -offset indent
+ipfw table 100 create type addr
+ipfw add 1000 deny ip from table(100) to any
+.Ed
+.Pp
+If running as an unprivileged user, set
+.Ic firewall_runner
+to
+.Ic doas
+or
+.Ic sudo
+and allow the required commands (for example,
+.Pa /sbin/pfctl
+or
+.Pa /sbin/ipfw
+with table operations).
+.Sh FILES
+.Bl -tag -width indent
+.It Pa /usr/local/etc/doveguard.conf
+Configuration file.
+.It Pa /usr/local/etc/doveguard.conf.sample
+Sample configuration file.
+.It Pa /var/db/doveguard/state.json
+Persistent ban state.
+.It Pa /var/log/doveguard/doveguard.log
+Default output log (when file logging is enabled).
+.El
+.Sh SEE ALSO
+.Xr rc.conf 5 ,
+.Xr syslog.conf 5 ,
+.Xr pf.conf 5 ,
+.Xr pfctl 8 ,
+.Xr ipfw 8
+.Sh AUTHORS
+.An Sam Sheridan Aq Mt sam@sheridan.uk

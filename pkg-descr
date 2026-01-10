@@ -1,0 +1,9 @@
+Doveguard is a lightweight log-watcher for Dovecot on FreeBSD. It tails the
+mail log, counts repeated authentication failures within a configurable window,
+and automatically bans abusive IPs by updating PF or IPFW tables. The daemon is
+written in Rust with no external dependencies beyond the base system, so it fits
+well on small jails or embedded appliances.
+
+Doveguard targets FreeBSD specifically and does not rely on blacklistd. Linux
+support would require a different firewall backend and is not part of this
+release.

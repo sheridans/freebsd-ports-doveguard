@@ -1,0 +1,54 @@
+#!/bin/sh
+# PROVIDE: doveguard
+# REQUIRE: LOGIN syslogd
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="doveguard"
+rcvar="doveguard_enable"
+
+doveguard_command="/usr/local/sbin/doveguard"
+
+: ${doveguard_enable:="NO"}
+: ${doveguard_user:="doveguard"}
+: ${doveguard_group:="doveguard"}
+: ${doveguard_config:=""}
+
+load_rc_config "$name"
+
+pidfile="/var/run/doveguard/doveguard.pid"
+
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} -t ${name} ${doveguard_command}"
+[ -n "${doveguard_config}" ] && command_args="${command_args} -c ${doveguard_config}"
+
+procname="${doveguard_command}"
+
+required_files="${doveguard_command}"
+
+start_precmd="doveguard_precmd"
+stop_postcmd="doveguard_postcmd"
+
+doveguard_precmd()
+{
+    # Create runtime directories with correct ownership
+    if [ ! -d "/var/run/doveguard" ]; then
+        install -d -o ${doveguard_user} -g ${doveguard_group} -m 0755 /var/run/doveguard
+    fi
+    if [ ! -d "/var/log/doveguard" ]; then
+        install -d -o ${doveguard_user} -g ${doveguard_group} -m 0755 /var/log/doveguard
+    fi
+    if [ ! -f "/var/log/doveguard/doveguard.log" ]; then
+        install -o ${doveguard_user} -g ${doveguard_group} -m 0640 /dev/null /var/log/doveguard/doveguard.log
+    fi
+}
+
+doveguard_postcmd()
+{
+    rm -f "${pidfile}"
+    # Clean up directory if empty
+    rmdir /var/run/doveguard 2>/dev/null || true
+}
+
+run_rc_command "$1"

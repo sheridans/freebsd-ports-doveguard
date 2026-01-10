@@ -1,0 +1,159 @@
+# doveguard.conf - Configuration for Dovecot brute-force blocker (Rust)
+#
+
+# -----------------------------
+# General settings
+# -----------------------------
+log_path = "/var/log/maillog"   # Path to the mail log (usually maillog on FreeBSD)
+log_output_path = "/var/log/doveguard/doveguard.log"  # Output log file (default)
+log_syslog = false                                # Also log to syslog (default: false)
+
+# -----------------------------
+# Detection rules
+# -----------------------------
+window_seconds = 600            # Sliding window: 10 minutes (600 seconds)
+threshold = 3                   # Ban after this many failures in the window
+
+# -----------------------------
+# Ban behavior
+# -----------------------------
+ban_duration_seconds = 86400  # Default ban time: 24 hours
+
+# -----------------------------
+# Firewall backend configuration
+# -----------------------------
+# doveguard supports two firewall backends on FreeBSD:
+#
+# PF (Packet Filter) - Default
+#   firewall_backend = "pf"
+#   firewall_table = "doveguard"          # String table name
+#   Uses: pfctl -t <table> -T add/delete <ip>
+#   Requires: PF table configured in /etc/pf.conf
+#   Example /etc/pf.conf:
+#     table <doveguard> persist counters
+#     block in quick from <doveguard>
+#
+# IPFW (IP Firewall) - Alternative
+#   firewall_backend = "ipfw"
+#   firewall_table = "1"                  # Numeric table ID (0-65535)
+#   Uses: ipfw table <number> add/delete <ip>
+#   Example setup:
+#     ipfw table 1 create type addr
+#     ipfw add 100 deny tcp from "table(1)" to any 110,143,993,995,4190
+
+firewall_backend="pf"
+firewall_table="doveguard"
+
+# -----------------------------
+# Privilege escalation
+# -----------------------------
+# How to run firewall commands if not running as root
+# Options: "" (empty = direct execution, requires root)
+#          "doas" (use doas for privilege escalation)
+#          "sudo" (use sudo for privilege escalation)
+#
+# Behavior:
+#   Empty + non-root = MONITOR-ONLY mode (no enforcement)
+#   Empty + root     = Direct firewall execution (legacy)
+#   doas/sudo        = Always use privilege escalation
+#
+# Example doas.conf for PF (restrictive - RECOMMENDED):
+#   permit nopass doveguard as root cmd pfctl args -t doveguard -T add
+#   permit nopass doveguard as root cmd pfctl args -t doveguard -T delete
+#
+# Example doas.conf for IPFW:
+#   permit nopass doveguard as root cmd ipfw args table 1 add
+#   permit nopass doveguard as root cmd ipfw args table 1 delete
+#
+# Example sudoers for PF (restrictive - RECOMMENDED):
+#   doveguard ALL=(root) NOPASSWD: /sbin/pfctl -t doveguard -T add *, \
+#                                   /sbin/pfctl -t doveguard -T delete *
+#
+# Example sudoers for IPFW:
+#   doveguard ALL=(root) NOPASSWD: /sbin/ipfw table 1 add *, \
+#                                   /sbin/ipfw table 1 delete *
+#
+firewall_runner = ""
+
+# -----------------------------
+# Whitelist - NEVER ban these IPs or networks
+# -----------------------------
+whitelist = [
+  "127.0.0.1/32",         # Localhost IPv4
+  "::1/128",              # Localhost IPv6
+  "0.0.0.0/32",           # Unspecified IPv4
+  "::/128",               # Unspecified IPv6
+  "10.0.0.0/8",           # RFC1918 private
+  "172.16.0.0/12",        # RFC1918 private
+  "192.168.0.0/16",       # RFC1918 private
+  "fc00::/7",             # Unique local IPv6
+  # Add your own trusted IPs or networks here (use CIDR notation):
+  # "203.0.113.42/32",
+  # "2001:db8::/32",
+]
+
+# -----------------------------
+# Testing and advanced options
+# -----------------------------
+# Dry-run mode still logs what would be banned without affecting the firewall; enforcement cannot be disabled once the daemon runs as root or via privilege escalation
+dry_run = false                   # Set to true for testing without enforcing bans
+save_interval_seconds = 300       # How often to persist state to /var/db/doveguard/state.json (persistence always enabled via STATE_FILE_PATH)
+
+# -----------------------------
+# Memory and resource limits
+# -----------------------------
+max_log_line_bytes = 65536        # Maximum log line size (64KB) - skip oversized lines to prevent memory exhaustion
+max_tracked_ips = 100000          # Maximum IPs tracked simultaneously (~8MB memory) - prevents unbounded growth
+failure_cleanup_interval = 300    # Cleanup old failure records every 5 minutes to prevent memory leaks
+
+# log_level = "info"              # debug, info, warn, error (future feature)
+
+# =============================================================================================
+# Failure patterns (MUST be last!)
+# =============================================================================================
+# IMPORTANT: In TOML, array tables like [[fail_patterns]] must come AFTER all top-level
+# key-value pairs. Do not add any configuration settings below this line - they will be ignored!
+#
+# Each fail_patterns entry has a description (for logs) and a pattern (regex).
+# The regex must include a required named capture group (?P<ip>...).
+# Descriptions appear in ban logs for better observability.
+#
+# Example log output:
+#   BANNED 192.0.2.1 for 24 hours (Dovecot: Standard auth failure with attempt count)
+
+[[fail_patterns]]
+description = "Dovecot: Standard auth failure with attempt count"
+pattern = 'dovecot\[\d+\]: (?:imap|pop3)-login: .*?(?:Disconnected|Aborted login).*?\(auth failed, (?P<attempts>\d+) attempts? in \d+ secs\): .*?rip=(?P<ip>[0-9a-fA-F:.]+)'
+
+[[fail_patterns]]
+description = "Dovecot: Auth failure (fallback)"
+pattern = 'dovecot\[\d+\]: (?:imap|pop3)-login: .*?(?:Disconnected|Aborted login).*?auth failed.*?rip=(?P<ip>[0-9a-fA-F:.]+)'
+
+[[fail_patterns]]
+description = "Dovecot: Too many invalid commands (scanner junk)"
+pattern = 'dovecot\[\d+\]: (?:imap|pop3)-login: Disconnected: Too many invalid commands.*?rip=(?P<ip>[0-9a-fA-F:.]+)'
+
+[[fail_patterns]]
+description = "Dovecot: Disallowed plaintext auth"
+pattern = 'dovecot\[\d+\]: (?:imap|pop3)-login: .*?tried to use (?:disabled|disallowed) plaintext auth.*?rip=(?P<ip>[0-9a-fA-F:.]+)'
+
+[[fail_patterns]]
+description = "Dovecot: SQL auth failure (password mismatch or unknown user)"
+pattern = 'dovecot\[\d+\]: auth-worker.*? sql\([^,]+,(?P<ip>[0-9a-fA-F:.]+)(?:,.*)?\):\s+(?:Password mismatch|unknown user)'
+
+# Optional: Postfix patterns (uncomment to enable)
+# [[fail_patterns]]
+# description = "Postfix: SASL authentication failed"
+# pattern = 'postfix/smtpd\[\d+\]: warning: .*?\[(?P<ip>[0-9a-fA-F:.]+)\]: SASL (?:PLAIN|LOGIN) authentication failed'
+
+# [[fail_patterns]]
+# description = "Postfix: Lost connection after AUTH"
+# pattern = 'postfix/smtpd\[\d+\]: NOQUEUE: lost connection after AUTH from .*?\[(?P<ip>[0-9a-fA-F:.]+)\]'
+
+# [[fail_patterns]]
+# description = "Postfix: Unknown recipient (directory harvest)"
+# pattern = 'postfix/smtpd\[\d+\]: NOQUEUE: reject: RCPT from .*?\[(?P<ip>\d{1,3}(?:\.\d{1,3}){3})\]: 550 5\.1\.1 <.*?>.*User unknown in virtual mailbox table'
+
+# [[fail_patterns]]
+# description = "Postfix: Non-SMTP command (HTTP probes on mail port)"
+# pattern = 'postfix/smtpd\[\d+\]: warning: non-SMTP command from .*?\[(?P<ip>[0-9a-fA-F:.]+)\]: .*'
