@@ -7,7 +7,7 @@ doveguard installed.
    sysrc doveguard_enable=YES
 
 2) Create a config:
-   cp /usr/local/etc/doveguard.conf.sample /usr/local/etc/doveguard.conf
+   cp %%PREFIX%%/etc/doveguard.conf.sample %%PREFIX%%/etc/doveguard.conf
 
 3) If using PF, ensure the table exists in /etc/pf.conf:
    table <doveguard> persist counters

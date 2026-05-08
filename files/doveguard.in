@@ -8,7 +8,7 @@
 name="doveguard"
 rcvar="doveguard_enable"
 
-doveguard_command="/usr/local/sbin/doveguard"
+doveguard_command="%%PREFIX%%/sbin/doveguard"
 
 : ${doveguard_enable:="NO"}
 : ${doveguard_user:="doveguard"}
