@@ -5,8 +5,6 @@
 # General settings
 # -----------------------------
 log_path = "/var/log/maillog"   # Path to the mail log (usually maillog on FreeBSD)
-log_output_path = "/var/log/doveguard/doveguard.log"  # Output log file (default)
-log_syslog = false                                # Also log to syslog (default: false)
 
 # -----------------------------
 # Detection rules

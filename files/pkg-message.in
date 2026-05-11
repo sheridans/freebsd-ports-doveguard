@@ -17,7 +17,7 @@ doveguard installed.
    permit nopass doveguard as root cmd /sbin/pfctl args -t doveguard -T add
    permit nopass doveguard as root cmd /sbin/pfctl args -t doveguard -T delete
 
-Logs: /var/log/doveguard/doveguard.log (or enable syslog with log_syslog=true).
+Logs: via syslog (facility daemon, tag doveguard).
 EOM
 }
 ]

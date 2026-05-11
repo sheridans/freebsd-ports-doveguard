@@ -32,15 +32,9 @@ stop_postcmd="doveguard_postcmd"
 
 doveguard_precmd()
 {
-    # Create runtime directories with correct ownership
+    # Create runtime directory for pidfile
     if [ ! -d "/var/run/doveguard" ]; then
         install -d -o ${doveguard_user} -g ${doveguard_group} -m 0755 /var/run/doveguard
-    fi
-    if [ ! -d "/var/log/doveguard" ]; then
-        install -d -o ${doveguard_user} -g ${doveguard_group} -m 0755 /var/log/doveguard
-    fi
-    if [ ! -f "/var/log/doveguard/doveguard.log" ]; then
-        install -o ${doveguard_user} -g ${doveguard_group} -m 0640 /dev/null /var/log/doveguard/doveguard.log
     fi
 }
 

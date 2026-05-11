@@ -1,5 +1,5 @@
 PORTNAME=	doveguard
-DISTVERSION=	1.0.1
+DISTVERSION=	1.1.0
 CATEGORIES=	security
 
 MAINTAINER=	sam@sheridan.uk
@@ -23,7 +23,6 @@ GROUPS=		doveguard
 .include "${.CURDIR}/Makefile.crates"
 
 PLIST_FILES=	"@dir(doveguard,doveguard,) /var/db/doveguard" \
-		"@dir(doveguard,doveguard,) /var/log/doveguard" \
 		"@sample etc/doveguard.conf.sample" \
 		sbin/doveguard \
 		share/man/man8/doveguard.8.gz
@@ -37,6 +36,5 @@ post-install:
 	${MKDIR} ${STAGEDIR}${PREFIX}/etc
 	${INSTALL_DATA} ${FILESDIR}/doveguard.conf.sample ${STAGEDIR}${PREFIX}/etc/doveguard.conf.sample
 	${MKDIR} ${STAGEDIR}/var/db/doveguard
-	${MKDIR} ${STAGEDIR}/var/log/doveguard
 
 .include <bsd.port.mk>

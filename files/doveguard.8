@@ -31,11 +31,6 @@ The following keys are supported:
 .It Ic log_path
 Path to the mail log to monitor. Default:
 .Pa /var/log/maillog .
-.It Ic log_output_path
-Output log file path. Default:
-.Pa /var/log/doveguard/doveguard.log .
-.It Ic log_syslog
-Enable syslog output (boolean). Default: false.
 .It Ic firewall_backend
 Firewall backend:
 .Ic pf
@@ -109,8 +104,6 @@ Configuration file.
 Sample configuration file.
 .It Pa /var/db/doveguard/state.json
 Persistent ban state.
-.It Pa /var/log/doveguard/doveguard.log
-Default output log (when file logging is enabled).
 .El
 .Sh SEE ALSO
 .Xr rc.conf 5 ,
